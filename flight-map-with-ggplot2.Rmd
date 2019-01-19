@@ -1,0 +1,113 @@
+---
+title: Flight Map with ggplot2
+author: Imran Kocabiyik
+date: '2018-05-09'
+slug: flight-map-with-ggplot2
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Flight Map with ggplot2
+
+A flight map with ggplot2:  
+  
+  We need:  
+  - A cartesian space. x $\mapsto$ `lat`, y $\mapsto$ `lon`  
+- Line segments to represent routes  
+- Polygons to represent to country borders  
+
+## 1. Routes
+Create some routes:  
+```{r routes-df, message=FALSE, warning=FALSE}
+# create routes
+library(dplyr)
+routes <- tribble(
+  ~origin_airport, ~dest_airport,
+  "IST", "TXL",
+  "TXL", "TSF",
+  "TXL", "ZRH",
+  "TXL", "CPH",
+  "TXL", "DLM",
+  "TXL", "ADA",
+  "TXL", "BOJ",
+  "TXL", "TFS",
+  "TXL", "BOS",
+  "TXL", "FAE",
+  "TXL", "CUZ",
+  "TXL", "HKG"
+)
+```
+
+## 2. Airport Locations
+
+Add 4 more column: `origin_airport_lat`, `origin_airport_lon`, `destination_airport_lat`, `destination_airport_lon`   
+```{r message=FALSE, warning=FALSE}
+# read airport locations
+library(readr)
+library(dplyr)
+airports <- read_csv("https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat", col_names = FALSE) %>% 
+  select(X5, X7, X8) %>%
+  rename(airport_code = X5,
+         airport_lat = X7,
+         airport_lon = X8)
+
+routes <- routes %>%
+  left_join(airports, by = c("origin_airport" = "airport_code")) %>% 
+  rename(origin_airport_lat = airport_lat,
+         origin_airport_lon = airport_lon) %>% 
+  left_join(airports, by = c("dest_airport" = "airport_code")) %>% 
+  rename(dest_airport_lat = airport_lat,
+         dest_airport_lon = airport_lon)
+routes
+```
+
+
+## 3. Visualize
+
+Draw a basic plot:  
+```{r airports}
+# cartesian
+library(ggplot2)
+ggplot(data = routes) + 
+  geom_segment(aes(x = origin_airport_lon, y = origin_airport_lat,
+                   xend = dest_airport_lon, yend = dest_airport_lat)) +
+  geom_text(aes(x = dest_airport_lon, y = dest_airport_lat, label = dest_airport)) +
+  coord_equal() +
+  xlab("Lon") +
+  ylab("Lat")
+```
+
+It does not look like a flight map.  
+We just draw line segments between `origin_airport` and `destination_airport`.  Next step is adding polygons. We can get the polygon data with `ggplot2::map_data` function.  
+
+We can also change the theme by adding another layer: `theme_void`  
+
+
+```{r flightmap}
+library(ggplot2)
+world <-  map_data("world") %>% tbl_df()
+ggplot(data = routes) + 
+  geom_polygon(data = world, aes(x = long, y = lat, group=group), 
+               size = 0.2, color="white", alpha = 0.9, fill="lightgray") + 
+  geom_segment(aes(x = origin_airport_lon, y = origin_airport_lat,
+                   xend = dest_airport_lon, yend = dest_airport_lat),
+               color = "brown") +
+  geom_text(aes(x = dest_airport_lon, y = dest_airport_lat, label = dest_airport), size = 3) +
+  theme_void()
+```
+
+
+We will have a more fancy plot by adding a `coord_map` layer.  
+```{r flightmap2}
+library(maps)
+ggplot(data = routes) + 
+  geom_polygon(data = world, aes(x = long, y = lat, group=group), 
+               size = 0.2, color="white", alpha = 0.9, fill="lightgray") + 
+  geom_segment(aes(x = origin_airport_lon, y = origin_airport_lat,
+                   xend = dest_airport_lon, yend = dest_airport_lat),
+               color = "brown") +
+  coord_map("azequalarea", orientation = c(0, -10, 0)) +
+  theme_void()
+```
