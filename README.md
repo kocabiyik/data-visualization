@@ -1,5 +1,7 @@
-# Data Visualization
+# Data Visualization Templates
 
-Contains plots for the future reference. 
+Visualizations for future reference. Mostly with `ggplot2`
+
+## Flight Map
 
 ![Flight Map](images/flightmap.png) 
